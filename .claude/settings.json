@@ -1,0 +1,21 @@
+{
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "Bash(gh auth status:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(wrangler whoami:*)",
+      "Bash(wrangler pages project list:*)",
+      "Bash(wrangler pages deployment list:*)",
+      "Bash(wrangler deployments list:*)",
+      "Bash(npx wrangler whoami:*)",
+      "Bash(npx wrangler pages project list:*)"
+    ]
+  }
+}

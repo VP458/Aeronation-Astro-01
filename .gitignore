@@ -1,0 +1,31 @@
+# build output
+dist/
+.output/
+
+# dependencies
+node_modules/
+
+# environment / secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# cloudflare / wrangler
+.wrangler/
+
+# astro
+.astro/
+
+# logs
+npm-debug.log*
+pnpm-debug.log*
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# local claude settings (personal overrides stay untracked)
+.claude/settings.local.json
