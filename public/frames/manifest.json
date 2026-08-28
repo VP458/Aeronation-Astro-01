@@ -1,0 +1,29 @@
+{
+  "frameCount": 36,
+  "sizes": [
+    "w640",
+    "w1280"
+  ],
+  "sizeWidths": {
+    "w640": 640,
+    "w1280": 1280
+  },
+  "formats": [
+    "webp"
+  ],
+  "combos": [
+    "survey-grey/eo-ir/standard",
+    "survey-grey/eo-ir/extended",
+    "survey-grey/stereo-vision/standard",
+    "survey-grey/stereo-vision/extended",
+    "survey-grey/multispectral/standard",
+    "survey-grey/multispectral/extended",
+    "maritime-dark/eo-ir/standard",
+    "maritime-dark/eo-ir/extended",
+    "maritime-dark/stereo-vision/standard",
+    "maritime-dark/stereo-vision/extended",
+    "maritime-dark/multispectral/standard",
+    "maritime-dark/multispectral/extended"
+  ],
+  "placeholder": true
+}

@@ -29,3 +29,7 @@ pnpm-debug.log*
 
 # local claude settings (personal overrides stay untracked)
 .claude/settings.local.json
+
+# reference assets pulled from Google Drive locally (see scripts/ingest-assets.sh)
+assets/reference/drive/
+assets/reference/CATALOGUE-TODO.csv

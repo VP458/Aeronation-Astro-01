@@ -1,22 +1,84 @@
 # Aeronation-Astro-01
 
-Astro project deployed to Cloudflare, with GitHub CLI, Cloudflare CLI (Wrangler),
-and MCP servers pre-configured for Claude Code.
+Astro app, server-rendered on Cloudflare Workers with a D1 (SQLite) database.
+GitHub CLI, Cloudflare CLI (Wrangler), and MCP servers are pre-configured for
+Claude Code.
+
+## Reconnaître Recon configurator (`/`)
+
+The site root is a browser-based turntable configurator for the Recon VTOL
+fixed-wing surveillance drone — **Path B** (pre-rendered frame scrubber),
+chosen because Phase 0 found no 3D geometry in the repo, git history, or
+Google Drive (Cloudflare R2 still needs a local `wrangler r2 bucket list`
+check — no API token was available in the build session).
+
+- Architecture, honesty rules, and the geometry swap-in path:
+  [`docs/CONFIGURATOR.md`](docs/CONFIGURATOR.md)
+- Option schema (single source of truth): [`src/config/options.ts`](src/config/options.ts),
+  grounded in [`docs/spec-sources.md`](docs/spec-sources.md) — unsourced
+  values are placeholder-flagged and render amber with an UNVERIFIED banner
+- Reference photo catalogue: [`assets/reference/MANIFEST.md`](assets/reference/MANIFEST.md);
+  run [`scripts/ingest-assets.sh`](scripts/ingest-assets.sh) locally to pull
+  the full-res shoot and fill in the visual catalogue
+- Frame sequences are **clearly-marked schematic placeholders**
+  (`npm run frames:placeholder` regenerates); swap-in steps for real renders
+  or a Path A Three.js viewer are in `docs/CONFIGURATOR.md`
+- Deep-linkable builds: state serialises to the query string, e.g.
+  `/?colourway=maritime-dark&payload=stereo-vision&endurance=standard&az=15`
+
+The D1 demo that previously lived at `/` is now at `/demo`.
+
+- **Framework**: Astro 5 (`output: "server"`) + `@astrojs/cloudflare` adapter
+- **Database**: Cloudflare D1, bound as `DB` (see [`wrangler.jsonc`](wrangler.jsonc))
+- **Demo**: `src/pages/index.astro` lists rows from D1; `src/pages/api/items.ts`
+  exposes `GET`/`POST /api/items`
 
 ## Quick start
 
 ```bash
-# 1. Install the GitHub CLI and Wrangler
+# 0. One-time: install the GitHub CLI and Wrangler, then authenticate
 ./scripts/setup-clis.sh
-
-# 2. Authenticate both CLIs
 gh auth login        # opens a browser — sign in to GitHub
 wrangler login       # opens a browser — sign in to Cloudflare
 
-# 3. Verify
-gh auth status
-wrangler whoami
+# 1. Install dependencies
+npm install
+
+# 2. Create the local D1 database (migration + sample rows)
+npm run db:migrate:local
+npm run db:seed:local
+
+# 3. Develop
+npm run dev          # http://localhost:4321 — D1 proxied into astro dev
 ```
+
+## Deploying to Cloudflare
+
+```bash
+# 1. Create the production D1 database (one time)
+npm run db:create
+#    → copy the printed database_id into wrangler.jsonc ("database_id": "...")
+
+# 2. Apply migrations + optional seed to the remote database
+npm run db:migrate:remote
+npm run db:seed:remote
+
+# 3. Build and deploy the Worker
+npm run deploy
+```
+
+`npm run preview` builds and serves the production Worker locally via
+`wrangler dev` (uses the local D1 copy in `.wrangler/state/`).
+
+## Database workflow
+
+- Add a new migration as `migrations/000N_description.sql`, then run
+  `npm run db:migrate:local` (and `:remote` when deploying).
+- Inspect data: `wrangler d1 execute aeronation-db --local --command "SELECT * FROM items"`.
+- The `DB` binding is typed in [`src/env.d.ts`](src/env.d.ts) and available in
+  pages/endpoints as `Astro.locals.runtime.env.DB` / `locals.runtime.env.DB`.
+- After changing bindings in `wrangler.jsonc`, regenerate types with
+  `npm run cf-typegen` and update `src/env.d.ts` if needed.
 
 ## MCP servers (Claude Code)
 
@@ -61,20 +123,11 @@ gh run list                  # recent GitHub Actions runs
 
 ```bash
 wrangler whoami                          # verify login / account
-wrangler pages project list              # list Cloudflare Pages projects
-wrangler pages deploy dist               # deploy the Astro build output
-wrangler pages deployment list           # recent deployments
+wrangler deploy                          # deploy the Worker (or: npm run deploy)
+wrangler deployments list                # recent Worker deployments
+wrangler tail                            # live production logs
+wrangler d1 info aeronation-db           # D1 database details
 ```
-
-For an Astro site on Cloudflare Pages, the usual flow is:
-
-```bash
-npm run build                # builds to ./dist
-wrangler pages deploy dist --project-name aeronation-astro-01
-```
-
-Alternatively, connect the GitHub repo to Cloudflare Pages in the dashboard for
-automatic deploys on push (build command `npm run build`, output dir `dist`).
 
 ## CI / non-interactive auth
 
