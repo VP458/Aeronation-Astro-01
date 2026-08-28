@@ -14,7 +14,8 @@
     "db:migrate:local": "wrangler d1 migrations apply aeronation-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply aeronation-db --remote",
     "db:seed:local": "wrangler d1 execute aeronation-db --local --file=./db/seed.sql",
-    "db:seed:remote": "wrangler d1 execute aeronation-db --remote --file=./db/seed.sql"
+    "db:seed:remote": "wrangler d1 execute aeronation-db --remote --file=./db/seed.sql",
+    "frames:placeholder": "node scripts/generate-placeholder-frames.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^12.6.10",
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@cloudflare/workers-types": "^5.20260828.1",
+    "sharp": "^0.35.4",
     "typescript": "^5.9.3",
     "wrangler": "^4.48.1"
   }

@@ -1,0 +1,97 @@
+---
+type Item = {
+  id: number;
+  title: string;
+  description: string | null;
+  created_at: string;
+};
+
+let items: Item[] = [];
+let dbError: string | null = null;
+
+try {
+  const { DB } = Astro.locals.runtime.env;
+  const { results } = await DB.prepare(
+    "SELECT id, title, description, created_at FROM items ORDER BY created_at DESC LIMIT 50"
+  ).all<Item>();
+  items = results;
+} catch (err) {
+  dbError = err instanceof Error ? err.message : String(err);
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aeronation</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 42rem;
+        margin: 3rem auto;
+        padding: 0 1rem;
+        line-height: 1.6;
+      }
+      li {
+        margin-bottom: 0.75rem;
+      }
+      .meta {
+        font-size: 0.8rem;
+        opacity: 0.7;
+      }
+      .error {
+        border: 1px solid #c00;
+        border-radius: 6px;
+        padding: 1rem;
+      }
+      code {
+        background: rgba(128, 128, 128, 0.15);
+        padding: 0.1rem 0.3rem;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Aeronation ✈️</h1>
+    <p>Astro, server-rendered on Cloudflare Workers, backed by a D1 database.</p>
+
+    {
+      dbError ? (
+        <div class="error">
+          <strong>D1 not ready yet:</strong> {dbError}
+          <p>
+            Run <code>npm run db:migrate:local</code> and{" "}
+            <code>npm run db:seed:local</code>, then restart{" "}
+            <code>npm run dev</code>.
+          </p>
+        </div>
+      ) : items.length === 0 ? (
+        <p>
+          The <code>items</code> table is empty. Seed it with{" "}
+          <code>npm run db:seed:local</code> or POST to <code>/api/items</code>.
+        </p>
+      ) : (
+        <ul>
+          {items.map((item) => (
+            <li>
+              <strong>{item.title}</strong>
+              {item.description && <div>{item.description}</div>}
+              <div class="meta">
+                #{item.id} · {item.created_at}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    <p class="meta">
+      API: <code>GET /api/items</code> · <code>POST /api/items</code> with{" "}
+      <code>{'{ "title": "...", "description": "..." }'}</code>
+    </p>
+  </body>
+</html>
