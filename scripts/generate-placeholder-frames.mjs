@@ -29,12 +29,17 @@ import sharp from "sharp";
 /* ── Contract constants (keep in sync with src/config/options.ts) ─────── */
 
 const COLOURWAYS = ["survey-grey", "maritime-dark"];
-const PAYLOADS = ["eo-ir", "multispectral", "deterrent"];
+const PAYLOADS = ["eo-ir", "stereo-vision", "multispectral"];
 const ENDURANCES = ["standard", "extended"];
 
 const FRAME_COUNT = 36; // 10° azimuth steps
 const SIZES = { w640: [640, 360], w1280: [1280, 720] };
-const WEBP_QUALITY = 78;
+// Lossy WebP with reduced-quality alpha: nearly all of a wireframe-on-
+// transparent frame's weight is anti-aliased stroke edges in the alpha
+// channel (lossless alpha — the default — tripled file size). Settings
+// chosen empirically to land the full 864-file set under the 12 MB budget.
+const WEBP_OPTS = { quality: 38, alphaQuality: 12, effort: 6 };
+const WEBP_OPTS_SMALL = { quality: 34, alphaQuality: 10, effort: 6 };
 const ELEVATION_DEG = 18;
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -109,8 +114,8 @@ function buildAirframe(payload, endurance) {
     [-0.62, 0.038, 0.045],
     [-0.78, 0.014, 0.02], // tail cap
   ];
-  // formers (skip the nose point)
-  for (const [x, hw, hh] of stations.slice(1)) {
+  // formers (a representative subset keeps frame weight down)
+  for (const [x, hw, hh] of [stations[1], stations[3], stations[5]]) {
     add(circleEllipse(x, hw, hh), "thin", true);
   }
   // longerons: top, bottom, left, right
@@ -128,7 +133,7 @@ function buildAirframe(payload, endurance) {
   add([[wing.tipTE, -wing.tipY, wing.tipZ], [wing.rootTE, 0, zw], [wing.tipTE, wing.tipY, wing.tipZ]], "base"); // trailing edge
   add([[wing.tipLE, -wing.tipY, wing.tipZ], [wing.tipTE, -wing.tipY, wing.tipZ]], "base"); // tips
   add([[wing.tipLE, wing.tipY, wing.tipZ], [wing.tipTE, wing.tipY, wing.tipZ]], "base");
-  for (const y of [-0.85, -0.42, 0, 0.42, 0.85]) {
+  for (const y of [-0.85, 0, 0.85]) {
     // rib chord lines, interpolated
     const t = Math.abs(y) / wing.tipY;
     const le = wing.rootLE + (wing.tipLE - wing.rootLE) * t;
@@ -186,26 +191,26 @@ function buildAirframe(payload, endurance) {
     }
     add([[0.0, -0.14, -0.095], [0.0, -0.14, -0.062]], "accent"); // struts
     add([[0.0, 0.14, -0.095], [0.0, 0.14, -0.062]], "accent");
-  } else if (payload === "deterrent") {
-    // acoustic pod with a forward-flaring horn under the fuselage
-    add(circle3(0.10, 0, -0.13, 0.05, "x", 20), "accent", true); // pod aft rim
-    add(circle3(0.30, 0, -0.13, 0.05, "x", 20), "accent", true); // pod fore rim
-    for (const a of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
-      const dy = 0.05 * Math.cos(a);
-      const dz = 0.05 * Math.sin(a);
-      add([[0.10, dy, -0.13 + dz], [0.30, dy, -0.13 + dz]], "accent"); // pod walls
+  } else if (payload === "stereo-vision") {
+    // dual-camera photogrammetry pods under the wing, symmetric about
+    // the centreline, with a dashed stereo-baseline tie between them
+    for (const side of [-1, 1]) {
+      const y = 0.34 * side;
+      add(circle3(0.02, y, -0.125, 0.045, "x", 20), "accent", true); // pod aft rim
+      add(circle3(0.16, y, -0.125, 0.045, "x", 20), "accent", true); // pod fore rim
+      for (const a of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
+        const dy = 0.045 * Math.cos(a);
+        const dz = 0.045 * Math.sin(a);
+        add([[0.02, y + dy, -0.125 + dz], [0.16, y + dy, -0.125 + dz]], "accent");
+      }
+      add(circle3(0.185, y, -0.125, 0.032, "x", 16), "accent", true); // lens ring
+      add([[0.09, y, -0.08], [0.09, y, -0.062]], "accent"); // mount strut
     }
-    add(circle3(0.44, 0, -0.14, 0.088, "x", 24), "accent", true); // horn mouth
-    for (const a of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
-      add(
-        [
-          [0.30, 0.05 * Math.cos(a), -0.13 + 0.05 * Math.sin(a)],
-          [0.44, 0.088 * Math.cos(a), -0.14 + 0.088 * Math.sin(a)],
-        ],
-        "accent"
-      ); // horn flare
+    // stereo baseline tie (segmented to read as a measurement line)
+    for (let t = 0; t < 6; t++) {
+      const y0 = -0.34 + (0.68 / 6) * t;
+      add([[0.09, y0 + 0.02, -0.155], [0.09, y0 + 0.075, -0.155]], "accent");
     }
-    add([[0.20, 0, -0.08], [0.20, 0, -0.062]], "accent"); // mount strut
   }
 
   /* Energy fit — belly pack under the fuselage centre.
@@ -264,10 +269,10 @@ function polyPath(pts2, closed) {
 /* ── Frame SVG ────────────────────────────────────────────────────────── */
 
 const W = 1280, H = 720;
-const SCALE = 320;
+const SCALE = 302;
 const CX = W / 2, CY = 348;
 const GROUND_Z = -0.38;
-const RING_R = 1.48;
+const RING_R = 1.38;
 
 function frameSvg(polys, azDeg, scheme) {
   const proj = makeProjector(azDeg, ELEVATION_DEG, SCALE, CX, CY);
@@ -280,7 +285,7 @@ function frameSvg(polys, azDeg, scheme) {
   // ground shadow: soft ellipse under the airframe (ground plane circle
   // projects to an ellipse with ry = rx·sin(el))
   const [gx, gy] = proj([0, 0, GROUND_Z]);
-  const shRx = 0.98 * SCALE;
+  const shRx = 0.86 * SCALE;
   const shRy = shRx * sinE;
 
   // azimuth ring: dotted ground-plane circle, ellipse under orthographic
@@ -306,14 +311,11 @@ function frameSvg(polys, azDeg, scheme) {
 </radialGradient>
 </defs>
 <ellipse cx="${fmt(gx)}" cy="${fmt(gy)}" rx="${fmt(shRx)}" ry="${fmt(shRy)}" fill="url(#sh)"/>
-<ellipse cx="${fmt(gx)}" cy="${fmt(gy)}" rx="${fmt(ringRx)}" ry="${fmt(ringRy)}" fill="none" stroke="${scheme.accent}" stroke-width="1.1" stroke-opacity="0.45" stroke-dasharray="1.5 7"/>
+<ellipse cx="${fmt(gx)}" cy="${fmt(gy)}" rx="${fmt(ringRx)}" ry="${fmt(ringRy)}" fill="none" stroke="${scheme.accent}" stroke-width="1.1" stroke-opacity="0.45" stroke-dasharray="2 26"/>
 ${cardinals.map(([x, y]) => `<circle cx="${fmt(x)}" cy="${fmt(y)}" r="2.4" fill="${scheme.accent}" fill-opacity="0.5"/>`).join("\n")}
 <path d="M${fmt(tickA[0])} ${fmt(tickA[1])}L${fmt(tickB[0])} ${fmt(tickB[1])}" stroke="${scheme.accent}" stroke-width="2.6" stroke-opacity="0.9" stroke-linecap="round"/>
 <circle cx="${fmt(tickA[0])}" cy="${fmt(tickA[1])}" r="3.4" fill="none" stroke="${scheme.accent}" stroke-width="1.2" stroke-opacity="0.9"/>
-<g fill="none" stroke="${scheme.accent}" stroke-width="4.5" stroke-opacity="0.16" stroke-linejoin="round" stroke-linecap="round">
-${groups.accent.map((d) => `<path d="${d}"/>`).join("\n")}
-</g>
-<g fill="none" stroke="${scheme.line}" stroke-width="1" stroke-opacity="0.5" stroke-linejoin="round">
+<g fill="none" stroke="${scheme.line}" stroke-width="0.9" stroke-opacity="0.45" stroke-linejoin="round">
 ${groups.thin.map((d) => `<path d="${d}"/>`).join("\n")}
 </g>
 <g fill="none" stroke="${scheme.line}" stroke-width="2" stroke-opacity="0.92" stroke-linejoin="round" stroke-linecap="round">
@@ -366,13 +368,12 @@ async function main() {
         frameSvg(polys, i * (360 / FRAME_COUNT), scheme)
       );
       const nnn = String(i).padStart(3, "0");
-      const big = sharp(svg); // rendered at native 1280×720
-      const bigBuf = await big
-        .webp({ quality: WEBP_QUALITY, effort: 5 })
+      const bigBuf = await sharp(svg) // rendered at native 1280×720
+        .webp(WEBP_OPTS)
         .toBuffer();
       const smallBuf = await sharp(svg)
         .resize(SIZES.w640[0], SIZES.w640[1])
-        .webp({ quality: WEBP_QUALITY, effort: 5 })
+        .webp(WEBP_OPTS_SMALL)
         .toBuffer();
       await writeFile(
         join(FRAMES_DIR, colourway, payload, endurance, "w1280", `${nnn}.webp`),
@@ -404,7 +405,13 @@ async function main() {
   console.log(`Done: ${done} frames + manifest.json`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Exported for ad-hoc inspection/testing; main() only runs when the script
+// is invoked directly (node scripts/generate-placeholder-frames.mjs).
+export { buildAirframe, frameSvg, SCHEMES };
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

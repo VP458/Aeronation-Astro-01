@@ -4,6 +4,30 @@ Astro app, server-rendered on Cloudflare Workers with a D1 (SQLite) database.
 GitHub CLI, Cloudflare CLI (Wrangler), and MCP servers are pre-configured for
 Claude Code.
 
+## Reconnaître Recon configurator (`/`)
+
+The site root is a browser-based turntable configurator for the Recon VTOL
+fixed-wing surveillance drone — **Path B** (pre-rendered frame scrubber),
+chosen because Phase 0 found no 3D geometry in the repo, git history, or
+Google Drive (Cloudflare R2 still needs a local `wrangler r2 bucket list`
+check — no API token was available in the build session).
+
+- Architecture, honesty rules, and the geometry swap-in path:
+  [`docs/CONFIGURATOR.md`](docs/CONFIGURATOR.md)
+- Option schema (single source of truth): [`src/config/options.ts`](src/config/options.ts),
+  grounded in [`docs/spec-sources.md`](docs/spec-sources.md) — unsourced
+  values are placeholder-flagged and render amber with an UNVERIFIED banner
+- Reference photo catalogue: [`assets/reference/MANIFEST.md`](assets/reference/MANIFEST.md);
+  run [`scripts/ingest-assets.sh`](scripts/ingest-assets.sh) locally to pull
+  the full-res shoot and fill in the visual catalogue
+- Frame sequences are **clearly-marked schematic placeholders**
+  (`npm run frames:placeholder` regenerates); swap-in steps for real renders
+  or a Path A Three.js viewer are in `docs/CONFIGURATOR.md`
+- Deep-linkable builds: state serialises to the query string, e.g.
+  `/?colourway=maritime-dark&payload=stereo-vision&endurance=standard&az=15`
+
+The D1 demo that previously lived at `/` is now at `/demo`.
+
 - **Framework**: Astro 5 (`output: "server"`) + `@astrojs/cloudflare` adapter
 - **Database**: Cloudflare D1, bound as `DB` (see [`wrangler.jsonc`](wrangler.jsonc))
 - **Demo**: `src/pages/index.astro` lists rows from D1; `src/pages/api/items.ts`
